@@ -22,7 +22,7 @@ module Tests =
     test <@ i.HasFact aFact @>
 
   [<Test>]
-  let ``reading fact causes exception``() =
+  let ``re-adding fact causes exception``() =
     let i = getEmptyInterpreter()
     i.Insert aFact
     raises<System.ArgumentException>  <@ i.Insert aFact @>
@@ -109,7 +109,7 @@ module Tests =
     test <@ i.HasFact aFact @>
 
   [<Test>]
-  let ``circularity of two``() =
+  let ``two facts can be created by two circular rules``() =
     let i = Fools.Interpreter [["A"], AST.Insert "B"
                                ["B"], AST.Insert "A"]    
     i.Insert aFact
@@ -117,19 +117,19 @@ module Tests =
     test <@ i.HasFact bFact @>
 
   [<Test>]
-  let ``circularity of two2``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "B"
-                               ["B"], AST.Insert "A"]    
-    i.Insert aFact
-    i.Retract bFact
-    test <@ i.HasFact aFact @>
-    test <@ i.HasFact bFact @>
-
-  [<Test>]
-  let ``circularity of two3``() =
+  let ``a fact can be removed if it's circularily confirmed by two rules``() =
     let i = Fools.Interpreter [["A"], AST.Insert "B"
                                ["B"], AST.Insert "A"]    
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
     test <@ not <| i.HasFact bFact @>
+
+  [<Test>]
+  let ``a fact cannot be removed if it's circularily confirmed by two rules``() =
+    let i = Fools.Interpreter [["A"], AST.Insert "B"
+                               ["B"], AST.Insert "A"]    
+    i.Insert aFact
+    i.Retract bFact
+    test <@ i.HasFact aFact @>
+    test <@ i.HasFact bFact @>
