@@ -1,3 +1,5 @@
 Fools/packages/
 **.DotSettings.user
 *.suo
+**/bin/
+**/obj/
