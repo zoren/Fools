@@ -33,6 +33,12 @@ module Tests =
     let i = Fools.Interpreter [[], AST.Insert "A"]
     test <@ i.HasFact aFact @>
 
+  [<Test>]
+  let ``consequences of rules with no assumptions cannot be removed``() =
+    let i = Fools.Interpreter [[], AST.Insert "A"]
+    i.Retract aFact
+    test <@ i.HasFact aFact @>
+
   let bFact = mkFact "B" []
 
   let mkAImpliesB() = Fools.Interpreter [["A"], AST.Insert "B"]
