@@ -7,6 +7,12 @@ open Swensen.Unquote.Assertions
 [<TestFixture>]
 module Tests =
   let getEmptyInterpreter() = Fools.Interpreter []
+
+  [<Test>]
+  let ``a empty session has no facts``() =
+    let i = getEmptyInterpreter()
+    let fact = mkFact "A" []
+    test <@ not <| i.HasFact fact @>
     
   [<Test>]
   let ``a fact can be added``() =
