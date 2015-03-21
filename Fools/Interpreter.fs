@@ -15,5 +15,5 @@ type Interpreter(file:AST.File) =
   member __.Insert (fact:Fact) : unit =
     failwith "not implemented"
 
-  member __.Remove (fact:Fact) : unit =
+  member __.Retract (fact:Fact) : unit =
     failwith "not implemented"

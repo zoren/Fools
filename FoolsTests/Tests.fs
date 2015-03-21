@@ -27,11 +27,11 @@ module Tests =
     let i = getEmptyInterpreter()
     let fact = mkFact "A" []    
     i.Insert fact
-    i.Remove fact
+    i.Retract fact
     test <@ not <| i.HasFact fact @>
 
   [<Test>]
   let ``retracting non-inserted fact causes exception``() =
     let i = getEmptyInterpreter()
     let fact = mkFact "A" []    
-    raises<System.ArgumentException> <@ i.Remove fact @>
+    raises<System.ArgumentException> <@ i.Retract fact @>
