@@ -9,6 +9,7 @@ module Tests =
   let getEmptyInterpreter() = Fools.Interpreter []
 
   let aFact = mkFact "A" []
+  let bFact = mkFact "B" []
 
   [<Test>]
   let ``a empty session has no facts``() =
@@ -39,7 +40,21 @@ module Tests =
     i.Retract aFact
     test <@ i.HasFact aFact @>
 
-  let bFact = mkFact "B" []
+  [<Test>]
+  let ``consequences of rules with no assumptions are applied``() =
+    let i = Fools.Interpreter [[], AST.Insert "A"
+                               ["A"], AST.Insert "B"]
+    test <@ i.HasFact aFact @>
+    test <@ i.HasFact bFact @>
+
+  [<Test>]
+  let ``consequences of rules with no assumptions are applied to fixpoint cannot be removed``() =
+    let i = Fools.Interpreter [[], AST.Insert "A"
+                               ["A"], AST.Insert "B"]
+    i.Retract aFact
+    i.Retract bFact
+    test <@ i.HasFact aFact @>
+    test <@ i.HasFact bFact @>
 
   let mkAImpliesB() = Fools.Interpreter [["A"], AST.Insert "B"]
 
