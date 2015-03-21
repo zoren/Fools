@@ -4,14 +4,7 @@ open AST
 
 type Author = User | System
 
-type NaiveInterpreter(file:AST.File) =
-  let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
-
-  let hasAuthor author fact = Set.contains author <| OneToManyMap.findSet fact factAuthors
-
-  let cartesian ys xs = xs |> Seq.collect (fun x -> ys |> Seq.map (fun y -> Seq.append y (Seq.singleton x) ))
-  let cartesianN = Seq.fold cartesian (Seq.singleton Seq.empty)
-
+module PatternMatchHelper =
   let tryGetMatch (c:Constant) =
     function
     | PatConst pc -> if c = pc then Some Map.empty else None
@@ -43,8 +36,20 @@ type NaiveInterpreter(file:AST.File) =
     then matchPatterns patternParams args
     else None
 
-  let findFacts (factPattern:FactPattern) =
-    Map.toSeq factAuthors |> Seq.map fst |> Seq.choose (matches factPattern)
+  let cartesian ys xs = xs |> Seq.collect (fun x -> ys |> Seq.map (fun y -> Seq.append y (Seq.singleton x) ))
+  let cartesianN = Seq.fold cartesian (Seq.singleton Seq.empty)
+
+  let findAllMatches (facts : Fact seq) (factPatterns:FactPattern list) : Map<Variable, Constant> seq =
+    let findAll pat = Seq.choose (matches pat) facts
+    Seq.choose unifyN << cartesianN <| Seq.map findAll factPatterns
+
+type NaiveInterpreter(file:AST.File) =
+  let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
+
+  let hasAuthor author fact = Set.contains author <| OneToManyMap.findSet fact factAuthors
+
+  let cartesian ys xs = xs |> Seq.collect (fun x -> ys |> Seq.map (fun y -> Seq.append y (Seq.singleton x) ))
+  let cartesianN = Seq.fold cartesian (Seq.singleton Seq.empty)
 
   let evalExp env =
     function
@@ -53,9 +58,8 @@ type NaiveInterpreter(file:AST.File) =
 
   let rec evalRules() =
     let evalRule ((assumptions, action):Rule) =
-      let combinations = cartesianN <| Seq.map findFacts assumptions
-      Seq.iter (fun facts -> let envOpt = unifyN facts
-                             Option.iter (fun env -> if evalAction env action then evalRules()) <| unifyN facts) combinations
+      Seq.iter (fun env -> if evalAction env action then evalRules())
+        <| PatternMatchHelper.findAllMatches (Map.toSeq factAuthors |> Seq.map fst) assumptions
     Seq.iter evalRule file
 
   and evalAction env =
