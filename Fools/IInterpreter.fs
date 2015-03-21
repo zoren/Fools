@@ -3,7 +3,7 @@
 [<AutoOpen>]
 module FactHelper =
   type Fact = AST.FactName * AST.Constant list
-  let mkFact (factName:AST.FactName) (args : AST.Constant list) = factName, [] : Fact
+  let mkFact (factName:AST.FactName) (args : AST.Constant list) = factName, args : Fact
 
 type IInterpreter =
   abstract member HasFact : Fact -> bool
