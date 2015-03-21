@@ -95,7 +95,7 @@ module Tests =
     let i = Fools.Interpreter [["A"], AST.Insert "A"]    
     i.Insert aFact
     i.Retract aFact
-    test <@ i.HasFact aFact @>
+    test <@ not <| i.HasFact aFact @>
 
   [<Test>]
   let ``two facts can be created by two circular rules``() =
