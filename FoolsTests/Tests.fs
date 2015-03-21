@@ -8,13 +8,15 @@ open Swensen.Unquote.Assertions
 type Tests<'IProvider when 'IProvider :> IInterpreterProvider
                       and 'IProvider : (new : unit -> 'IProvider)>() =
   let provider = new 'IProvider()
-  let mkInterpreter rules = provider.GetInterpreter rules
+  let mkInterpreter rules =
+    let convertRule (patterns, action) : AST.Rule = (List.map (fun s -> s,[]) patterns, AST.Insert(action,[]))
+    provider.GetInterpreter <| List.map convertRule rules
   let getEmptyInterpreter() = mkInterpreter []
 
   let aFact = mkFact "A" []
   let bFact = mkFact "B" []
 
-  let mkAImpliesB() = mkInterpreter [["A"], AST.Insert "B"]
+  let mkAImpliesB() = mkInterpreter [["A"],  "B"]
 
   [<Test>]
   member __.``a empty session has no facts``() =
@@ -48,26 +50,26 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
 
   [<Test>]
   member __.``rule with no assumptions triggers``() =
-    let i = mkInterpreter [[], AST.Insert "A"]
+    let i = mkInterpreter [[], "A"]
     test <@ i.HasFact aFact @>
 
   [<Test>]
   member __.``consequences of rules with no assumptions cannot be removed``() =
-    let i = mkInterpreter [[], AST.Insert "A"]
+    let i = mkInterpreter [[], "A"]
     i.Retract aFact
     test <@ i.HasFact aFact @>
 
   [<Test>]
   member __.``consequences of rules with no assumptions are applied``() =
-    let i = mkInterpreter [[], AST.Insert "A"
-                           ["A"], AST.Insert "B"]
+    let i = mkInterpreter [[], "A"
+                           ["A"], "B"]
     test <@ i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
   [<Test>]
   member __.``consequences of rules with no assumptions are applied to fixpoint cannot be removed``() =
-    let i = mkInterpreter [[], AST.Insert "A"
-                           ["A"], AST.Insert "B"]
+    let i = mkInterpreter [[], "A"
+                           ["A"], "B"]
     i.Retract aFact
     i.Retract bFact
     test <@ i.HasFact aFact @>
@@ -122,29 +124,29 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
   // circularity
   [<Test>]
   member __.``a rule can confirm its own assumption``() =
-    let i = mkInterpreter [["A"], AST.Insert "A"]
+    let i = mkInterpreter [["A"], "A"]
     i.Insert aFact
     test <@ i.HasFact aFact @>
 
   [<Test>]
   member __.``a fact can be removed if it's circularily confirmed by a rule``() =
-    let i = mkInterpreter [["A"], AST.Insert "A"]
+    let i = mkInterpreter [["A"], "A"]
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
 
   [<Test>]
   member __.``two facts can be created by two circular rules``() =
-    let i = mkInterpreter [["A"], AST.Insert "B"
-                           ["B"], AST.Insert "A"]
+    let i = mkInterpreter [["A"], "B"
+                           ["B"], "A"]
     i.Insert aFact
     test <@ i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
   [<Test>]
   member __.``a fact can be removed if it's circularily confirmed by two rules``() =
-    let i = mkInterpreter [["A"], AST.Insert "B"
-                           ["B"], AST.Insert "A"]
+    let i = mkInterpreter [["A"], "B"
+                           ["B"], "A"]
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
@@ -152,8 +154,8 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
 
   [<Test>]
   member __.``a fact cannot be removed if it's circularily confirmed by two rules``() =
-    let i = mkInterpreter [["A"], AST.Insert "B"
-                           ["B"], AST.Insert "A"]
+    let i = mkInterpreter [["A"], "B"
+                           ["B"], "A"]
     i.Insert aFact
     i.Retract bFact
     test <@ i.HasFact aFact @>

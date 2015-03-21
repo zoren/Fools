@@ -2,11 +2,8 @@
 
 [<AutoOpen>]
 module FactHelper =
-  type Fact = AST.FactName
-  let mkFact (factName:AST.FactName) args =
-    if args <> []
-    then failwith "args not yet supported"
-    else factName : Fact
+  type Fact = AST.FactName * AST.Constant list
+  let mkFact (factName:AST.FactName) (args : AST.Constant list) = factName, [] : Fact
 
 type IInterpreter =
   abstract member HasFact : Fact -> bool
