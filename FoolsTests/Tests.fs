@@ -22,22 +22,11 @@ module Tests =
     test <@ i.HasFact aFact @>
 
   [<Test>]
-  let ``re-adding fact causes exception``() =
-    let i = getEmptyInterpreter()
-    i.Insert aFact
-    raises<System.ArgumentException>  <@ i.Insert aFact @>
-
-  [<Test>]
   let ``a fact can be added and removed``() =
     let i = getEmptyInterpreter()
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
-
-  [<Test>]
-  let ``retracting non-inserted fact causes exception``() =
-    let i = getEmptyInterpreter()
-    raises<System.ArgumentException> <@ i.Retract aFact @>
 
   [<Test>]
   let ``rule with no assumptions triggers``() =
