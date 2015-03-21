@@ -1,18 +1,10 @@
 ﻿namespace Fools
 
-[<AutoOpen>]
-module FactHelper =
-  type Fact = AST.FactName
-  let mkFact (factName:AST.FactName) args =
-    if args <> []
-    then failwith "args not yet supported"
-    else factName : Fact
-
 open AST
 
 type Author = User | System
 
-type Interpreter(file:AST.File) =
+type NaiveInterpreter(file:AST.File) =
   let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
 
   let hasAuthor author fact = Set.contains author <| OneToManyMap.findSet fact factAuthors
@@ -39,14 +31,19 @@ type Interpreter(file:AST.File) =
       then factAuthors <- OneToManyMap.add fact System factAuthors
       Set.isEmpty authors
 
-  member __.HasFact (fact:Fact) : bool =
-    evalRules()
-    not << Set.isEmpty <| OneToManyMap.findSet fact factAuthors
+  interface IInterpreter with
+    member __.HasFact (fact:Fact) : bool =
+      evalRules()
+      not << Set.isEmpty <| OneToManyMap.findSet fact factAuthors
 
-  member __.Insert (fact:Fact) : unit =
-    if not <| hasAuthor User fact
-    then factAuthors <- OneToManyMap.add fact User factAuthors
+    member __.Insert (fact:Fact) : unit =
+      if not <| hasAuthor User fact
+      then factAuthors <- OneToManyMap.add fact User factAuthors
 
-  member __.Retract (fact:Fact) : unit =
-    if hasAuthor User fact
-    then factAuthors <- OneToManyMap.remove fact User factAuthors
+    member __.Retract (fact:Fact) : unit =
+      if hasAuthor User fact
+      then factAuthors <- OneToManyMap.remove fact User factAuthors
+
+type public InterpreterProvider() =
+  interface IInterpreterProvider with
+    member __.GetInterpreter file = NaiveInterpreter file :> IInterpreter

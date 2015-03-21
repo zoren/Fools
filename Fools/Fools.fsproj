@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="AST.fs" />
     <Compile Include="OneToManyMap.fs" />
+    <Compile Include="IInterpreter.fs" />
     <Compile Include="Interpreter.fs" />
   </ItemGroup>
   <PropertyGroup>
