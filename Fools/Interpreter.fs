@@ -9,11 +9,13 @@ module FactHelper =
     else factName : Fact
 
 type Interpreter(file:AST.File) =
+  let mutable factSet = Set.empty
+
   member __.HasFact (fact:Fact) : bool =
-    failwith "not implemented"
+    Set.contains fact factSet
 
   member __.Insert (fact:Fact) : unit =
-    failwith "not implemented"
+    factSet <- Set.add fact factSet
 
   member __.Retract (fact:Fact) : unit =
-    failwith "not implemented"
+    factSet <- Set.remove fact factSet
