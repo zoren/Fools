@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AST.fs" />
+    <Compile Include="OneToManyMap.fs" />
     <Compile Include="Interpreter.fs" />
   </ItemGroup>
   <PropertyGroup>
