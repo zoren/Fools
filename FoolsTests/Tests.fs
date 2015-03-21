@@ -6,7 +6,7 @@ open Swensen.Unquote.Assertions
 
 [<TestFixture>]
 module Tests =
-  let getEmptyInterpreter() = Fools.Interpreter ([], [])
+  let getEmptyInterpreter() = Fools.Interpreter []
     
   [<Test>]
   let ``a fact can be added``() =
@@ -16,7 +16,7 @@ module Tests =
     test <@ i.HasFact fact @>
 
   [<Test>]
-  let ``readding fact causes exception``() =
+  let ``reading fact causes exception``() =
     let i = getEmptyInterpreter()
     let fact = mkFact "A" []    
     i.Insert fact
