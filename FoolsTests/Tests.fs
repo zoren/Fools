@@ -6,7 +6,8 @@ open Swensen.Unquote.Assertions
 
 [<TestFixture>]
 module Tests =
-  let getEmptyInterpreter() = Fools.Interpreter []
+  let mkInterpreter rules = Fools.Interpreter rules
+  let getEmptyInterpreter() = mkInterpreter []
 
   let aFact = mkFact "A" []
   let bFact = mkFact "B" []
@@ -23,6 +24,18 @@ module Tests =
     test <@ i.HasFact aFact @>
 
   [<Test>]
+  let ``a fact can be added twice``() =
+    let i = getEmptyInterpreter()
+    i.Insert aFact
+    i.Insert aFact
+    test <@ i.HasFact aFact @>
+
+  [<Test>]
+  let ``a non-added fact can be retracted``() =
+    let i = getEmptyInterpreter()
+    i.Retract aFact
+
+  [<Test>]
   let ``a fact can be added and removed``() =
     let i = getEmptyInterpreter()
     i.Insert aFact
@@ -31,32 +44,32 @@ module Tests =
 
   [<Test>]
   let ``rule with no assumptions triggers``() =
-    let i = Fools.Interpreter [[], AST.Insert "A"]
+    let i = mkInterpreter [[], AST.Insert "A"]
     test <@ i.HasFact aFact @>
 
   [<Test>]
   let ``consequences of rules with no assumptions cannot be removed``() =
-    let i = Fools.Interpreter [[], AST.Insert "A"]
+    let i = mkInterpreter [[], AST.Insert "A"]
     i.Retract aFact
     test <@ i.HasFact aFact @>
 
   [<Test>]
   let ``consequences of rules with no assumptions are applied``() =
-    let i = Fools.Interpreter [[], AST.Insert "A"
-                               ["A"], AST.Insert "B"]
+    let i = mkInterpreter [[], AST.Insert "A"
+                           ["A"], AST.Insert "B"]
     test <@ i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
   [<Test>]
   let ``consequences of rules with no assumptions are applied to fixpoint cannot be removed``() =
-    let i = Fools.Interpreter [[], AST.Insert "A"
-                               ["A"], AST.Insert "B"]
+    let i = mkInterpreter [[], AST.Insert "A"
+                           ["A"], AST.Insert "B"]
     i.Retract aFact
     i.Retract bFact
     test <@ i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
-  let mkAImpliesB() = Fools.Interpreter [["A"], AST.Insert "B"]
+  let mkAImpliesB() = mkInterpreter [["A"], AST.Insert "B"]
 
   [<Test>]
   let ``rule with one assumption does not trigger, until assumption is fulfilled``() =
@@ -107,29 +120,29 @@ module Tests =
   // circularity
   [<Test>]
   let ``a rule can confirm its own assumption``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "A"]    
+    let i = mkInterpreter [["A"], AST.Insert "A"]
     i.Insert aFact
     test <@ i.HasFact aFact @>
 
   [<Test>]
   let ``a fact can be removed if it's circularily confirmed by a rule``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "A"]    
+    let i = mkInterpreter [["A"], AST.Insert "A"]
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
 
   [<Test>]
   let ``two facts can be created by two circular rules``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "B"
-                               ["B"], AST.Insert "A"]    
+    let i = mkInterpreter [["A"], AST.Insert "B"
+                           ["B"], AST.Insert "A"]
     i.Insert aFact
     test <@ i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
   [<Test>]
   let ``a fact can be removed if it's circularily confirmed by two rules``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "B"
-                               ["B"], AST.Insert "A"]    
+    let i = mkInterpreter [["A"], AST.Insert "B"
+                           ["B"], AST.Insert "A"]
     i.Insert aFact
     i.Retract aFact
     test <@ not <| i.HasFact aFact @>
@@ -137,8 +150,8 @@ module Tests =
 
   [<Test>]
   let ``a fact cannot be removed if it's circularily confirmed by two rules``() =
-    let i = Fools.Interpreter [["A"], AST.Insert "B"
-                               ["B"], AST.Insert "A"]    
+    let i = mkInterpreter [["A"], AST.Insert "B"
+                           ["B"], AST.Insert "A"]
     i.Insert aFact
     i.Retract bFact
     test <@ i.HasFact aFact @>
