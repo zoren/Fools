@@ -49,3 +49,12 @@ type PatternParameterTests<'IProvider when 'IProvider :> IInterpreterProvider
     test <@ i.HasFact <| mkFact "C" ["2";"10"] @>
     test <@ i.HasFact <| mkFact "C" ["1";"20"] @>
     test <@ i.HasFact <| mkFact "C" ["2";"20"] @>
+
+  [<Test>]
+  member __.``a variable can be bound twice in a pattern``() =
+    let i = mkInterpreter [["A",[PatVar "x"; PatVar "x"]], AST.Insert ("B", [Var "x"])]
+    i.Insert <| mkFact "A" ["1"; "2"]
+    test <@ not << i.HasFact <| mkFact "B" ["1"] @>
+    test <@ not << i.HasFact <| mkFact "B" ["2"] @>
+    i.Insert <| mkFact "A" ["1"; "1"]
+    test <@ not << i.HasFact <| mkFact "B" ["1"] @>

@@ -121,6 +121,23 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
     test <@ not <| i.HasFact aFact @>
     test <@ i.HasFact bFact @>
 
+  [<Test>]
+  member __.``two rules can confirm the same fact``() =
+    let i = mkInterpreter [["A"], "C";["B"], "C";]
+    i.Insert aFact
+    i.Insert bFact
+    test <@ i.HasFact <| mkFact "C" [] @>
+
+  [<Test>]
+  member __.``two rules can confirm the same fact, and it is removed when the rules deactivate``() =
+    let i = mkInterpreter [["A"], "C";["B"], "C";]
+    i.Insert aFact
+    i.Insert bFact
+    i.Retract aFact
+    i.Retract bFact
+    test <@ not << i.HasFact <| mkFact "C" [] @>
+
+
   // circularity
   [<Test>]
   member __.``a rule can confirm its own assumption``() =
