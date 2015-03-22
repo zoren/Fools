@@ -56,20 +56,22 @@ type NaiveInterpreter(file:AST.File) =
     | Const c -> c
     | Var v -> Map.find v env
 
+  let evalAction env =
+    function
+    | Insert(factName, exps) ->
+      let fact = factName, List.map (evalExp env) exps
+      if hasAuthor System fact
+      then false
+      else
+        let noFact = Set.isEmpty <| OneToManyMap.findSet fact factAuthors
+        factAuthors <- OneToManyMap.add fact System factAuthors
+        noFact
+
   let rec evalRules() =
     let evalRule ((assumptions, action):Rule) =
       Seq.iter (fun env -> if evalAction env action then evalRules())
         <| PatternMatchHelper.findAllMatches (Map.toSeq factAuthors |> Seq.map fst) assumptions
     Seq.iter evalRule file
-
-  and evalAction env =
-    function
-    | Insert(factName, exps) ->
-      let fact = factName, List.map (evalExp env) exps
-      let authors = OneToManyMap.findSet fact factAuthors
-      if not <| Set.contains System authors
-      then factAuthors <- OneToManyMap.add fact System factAuthors
-      Set.isEmpty authors
 
   interface IInterpreter with
     member __.HasFact (fact:Fact) : bool =
