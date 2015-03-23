@@ -70,7 +70,7 @@ module ReteAlphaConverted =
     | JoinToken(_, r), Right sel -> lookup r sel
     | _ -> failwith "not found"
 
-  let eval factSet =
+  let evalNode factSet =
     let rec loop =
       function
       | NodeAC.Dummy -> Seq.singleton UnitToken
@@ -85,3 +85,38 @@ module ReteAlphaConverted =
                 yield JoinToken(l, r)}
           |> Seq.filter (fun t -> Seq.forall (fun (tokenEql, tokenEqr) -> lookup t tokenEql = lookup t tokenEqr) tokenEqs)
     loop
+
+  let evalProduction factSet ((nodeAC : NodeAC, mapping:Map<Variable, TokenSelector>), action) =
+    evalNode factSet nodeAC
+      |> Seq.map (fun t -> Map.map (fun var selector -> lookup t selector) mapping)
+      |> Seq.map (fun env -> ReteHelper.evalAction env action)
+      |> Seq.fold (fun a fact -> Set.add fact a) factSet
+
+  let evalRulesToFix productions factSet =
+    let rec loop factSet =
+      let factSet' = Seq.fold evalProduction factSet productions
+      if factSet' = factSet
+      then factSet'
+      else loop factSet'
+    loop factSet
+
+type ReteInterpreterAC(file:AST.File) =
+  let graph = ReteHelper.fileToGraph file
+  let acGraph = List.map (fun(ReteHelper.Production(node, action)) -> ReteAlphaConverted.alphaConvert node, action) graph
+
+  let mutable userSet = Set.empty
+
+  interface IInterpreter with
+    member __.HasFact fact =
+      let systemSet = ReteHelper.evalRulesToFix graph userSet
+      Set.contains fact systemSet
+
+    member __.Insert fact =
+      userSet <- Set.add fact userSet
+
+    member __.Retract fact =
+      userSet <- Set.remove fact userSet
+
+type public ReteInterpreterACProvider() =
+  interface IInterpreterProvider with
+    member __.GetInterpreter file = ReteInterpreterAC file :> IInterpreter

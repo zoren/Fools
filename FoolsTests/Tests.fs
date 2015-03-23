@@ -5,7 +5,7 @@ open NUnit.Framework
 open Swensen.Unquote.Assertions
 
 [<TestFixture(typeof<InterpreterProvider>)>]
-[<TestFixture(typeof<ReteInterpreterProvider>)>]
+[<TestFixture(typeof<ReteInterpreterACProvider>)>]
 type Tests<'IProvider when 'IProvider :> IInterpreterProvider
                       and 'IProvider : (new : unit -> 'IProvider)>() =
   let provider = new 'IProvider()
