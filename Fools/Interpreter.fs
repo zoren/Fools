@@ -20,8 +20,6 @@ module PatternMatchHelper =
         | _ -> Option.map (fun m -> Map.add v c m) (loop ll)
     loop <| Map.toList l
 
-  let unifyN = Seq.fold (fun a e -> Option.bind (fun l -> unify e l) a) (Some Map.empty)
-
   let rec matchPatterns factPattern args =
     match factPattern, args with
     | [], [] -> Some Map.empty
@@ -36,12 +34,21 @@ module PatternMatchHelper =
     then matchPatterns patternParams args
     else None
 
+  let unifyN = Seq.fold (fun a e -> Option.bind (fun l -> unify e l) a) (Some Map.empty)
+
   let cartesian ys xs = xs |> Seq.collect (fun x -> ys |> Seq.map (fun y -> Seq.append y (Seq.singleton x) ))
   let cartesianN = Seq.fold cartesian (Seq.singleton Seq.empty)
+
+  let findAll facts pat = Seq.choose (matches pat) facts
 
   let findAllMatches (facts : Fact seq) (factPatterns:FactPattern list) : Map<Variable, Constant> seq =
     let findAll pat = Seq.choose (matches pat) facts
     Seq.choose unifyN << cartesianN <| Seq.map findAll factPatterns
+
+  let evalExp env =
+    function
+    | Const c -> c
+    | Var v -> Map.find v env
 
 type NaiveInterpreter(file:AST.File) =
   let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
@@ -51,15 +58,10 @@ type NaiveInterpreter(file:AST.File) =
   let cartesian ys xs = xs |> Seq.collect (fun x -> ys |> Seq.map (fun y -> Seq.append y (Seq.singleton x) ))
   let cartesianN = Seq.fold cartesian (Seq.singleton Seq.empty)
 
-  let evalExp env =
-    function
-    | Const c -> c
-    | Var v -> Map.find v env
-
   let evalAction env =
     function
     | Insert(factName, exps) ->
-      let fact = factName, List.map (evalExp env) exps
+      let fact = factName, List.map (PatternMatchHelper.evalExp env) exps
       if hasAuthor System fact
       then false
       else
