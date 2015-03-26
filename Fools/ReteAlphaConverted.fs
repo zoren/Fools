@@ -63,10 +63,13 @@ module ReteAlphaConverted =
     | ReteAnything -> true
     | RetePatConst c' -> c = c'
 
-  let matchPattern (factName, reteFactPattern) ((factName', consts)) =
+  let matchConstants consts reteFactPattern =
     if List.length reteFactPattern <> List.length consts
     then failwith "arity mismatch"
-    factName = factName' && List.forall2 matchPatternParam consts reteFactPattern
+    List.forall2 matchPatternParam consts reteFactPattern
+
+  let matchPattern (factName, reteFactPattern) ((factName', consts)) =
+    factName = factName' && matchConstants consts reteFactPattern
 
   let rec lookup token selector =
     match token, selector with
@@ -74,6 +77,8 @@ module ReteAlphaConverted =
     | JoinToken(l, _), Left sel -> lookup l sel
     | JoinToken(_, r), Right sel -> lookup r sel
     | _ -> failwith "not found"
+
+  let tokenToEnv (token:Token) (mapping:Map<Variable, TokenSelector>) = Map.map (fun var tokSel -> lookup token tokSel) mapping
 
   let evalNode factSet =
     let rec loop =

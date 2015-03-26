@@ -6,6 +6,7 @@ open Swensen.Unquote.Assertions
 
 [<TestFixture(typeof<InterpreterProvider>)>]
 [<TestFixture(typeof<ReteInterpreterACProvider>)>]
+[<TestFixture(typeof<Incremental.IncrementalProvider>)>]
 type Tests<'IProvider when 'IProvider :> IInterpreterProvider
                       and 'IProvider : (new : unit -> 'IProvider)>() =
   let provider = new 'IProvider()
