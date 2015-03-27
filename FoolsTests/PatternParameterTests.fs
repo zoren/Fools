@@ -59,4 +59,4 @@ type PatternParameterTests<'IProvider when 'IProvider :> IInterpreterProvider
     test <@ not << i.HasFact <| mkFact "B" ["1"] @>
     test <@ not << i.HasFact <| mkFact "B" ["2"] @>
     i.Insert <| mkFact "A" ["1"; "1"]
-    test <@ not << i.HasFact <| mkFact "B" ["1"] @>
+    test <@ i.HasFact <| mkFact "B" ["1"] @>
