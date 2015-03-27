@@ -23,7 +23,7 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
   member __.``a empty session has no facts``() =
     let i = getEmptyInterpreter()
     test <@ not <| i.HasFact aFact @>
-    
+
   [<Test>]
   member __.``a fact can be added``() =
     let i = getEmptyInterpreter()

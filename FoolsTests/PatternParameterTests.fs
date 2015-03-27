@@ -38,7 +38,7 @@ type PatternParameterTests<'IProvider when 'IProvider :> IInterpreterProvider
     i.Insert <| mkFact "B" ["10"]
     test <@ i.HasFact <| mkFact "C" ["1";"10"] @>
     test <@ i.HasFact <| mkFact "C" ["2";"10"] @>
-    
+
   [<Test>]
   member __.``a variable can be bound in inserts, building a products``() =
     let i = mkInterpreter [["A",[PatVar "x"];"B",[PatVar "y"]], AST.Insert ("C", [Var "x"; Var "y"])]

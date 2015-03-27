@@ -1,7 +1,7 @@
 ﻿namespace Fools
 
 module AST =
-  type FactName = string  
+  type FactName = string
   type Constant = string
   type Variable = string
   type PatternParameter = PatVar of Variable | PatConst of Constant

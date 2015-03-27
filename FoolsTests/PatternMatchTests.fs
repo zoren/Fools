@@ -7,15 +7,15 @@ open Swensen.Unquote.Assertions
 
 [<TestFixture>]
 module PatternMatchTests =
-  
+
   [<Test>]
   let t0() =
-    let l = PatternMatchHelper.matches ("A", [PatVar "x"]) ("A", ["1"]) 
+    let l = PatternMatchHelper.matches ("A", [PatVar "x"]) ("A", ["1"])
     test <@ l = Some (Map.ofList ["x", "1"]) @>
 
   [<Test>]
   let t1() =
-    let l = PatternMatchHelper.matches ("A", [PatVar "x"]) ("B", ["1"]) 
+    let l = PatternMatchHelper.matches ("A", [PatVar "x"]) ("B", ["1"])
     test <@ l = None @>
 
 
