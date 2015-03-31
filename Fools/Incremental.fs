@@ -9,14 +9,17 @@ module Incremental =
     | Alpha of ReteFactPattern * NodeI[] option ref
     | Join of NodeI * NodeI * NodeI[] option ref
     | Constraint of NodeI * ConstraintTest * NodeI[] option ref
+    | Memory of NodeI * Set<Token> ref * NodeI[] option ref
     | Prod of NodeI * Action<TokenSelector>
+
+  let mkMem node = Memory(node, ref Set.empty, ref None)
 
   let rec convertFromAC =
     function
     | NodeAC.Dummy -> Dummy <| ref None
-    | NodeAC.Alpha fp -> Alpha(fp, ref None)
-    | NodeAC.Join(nl, nr) -> Join(convertFromAC nl, convertFromAC nr, ref None)
-    | NodeAC.Constraint(n, test) -> Constraint(convertFromAC n, test, ref None)
+    | NodeAC.Alpha fp -> mkMem <| Alpha(fp, ref None)
+    | NodeAC.Join(nl, nr) -> mkMem <| Join(convertFromAC nl, convertFromAC nr, ref None)
+    | NodeAC.Constraint(n, test) -> mkMem <| Constraint(convertFromAC n, test, ref None)
 
   let getChildren =
     let rec loop =
@@ -27,7 +30,7 @@ module Incremental =
         Seq.concat [Seq.ofList[nl, j; nr, j]
                     loop nl
                     loop nr]
-      | (Constraint(n, _, _) | Prod(n, _)) as p ->
+      | (Constraint(n, _, _) | Prod(n, _) | Memory(n, _, _)) as p ->
         Seq.append (Seq.singleton (n, p)) <| loop n
     loop
 
@@ -37,6 +40,7 @@ module Incremental =
     | Alpha(_, r) -> r
     | Join(_, _, r) -> r
     | Constraint (_, _, r) -> r
+    | Memory (_, _, r) -> r
     | _ -> failwith "no children"
 
   let setChildren childMap =
@@ -47,7 +51,7 @@ module Incremental =
       function
       | (Dummy _ | Alpha _) as n -> chooser n
       | Join(nl, nr, _) -> Seq.append (loop nl) (loop nr)
-      | Constraint (n, _, _)  | Prod (n, _) -> loop n
+      | Constraint (n, _, _)  | Memory (n, _, _) | Prod (n, _) -> loop n
     loop
 
   let rec getAlphaMap =
@@ -83,10 +87,11 @@ module Incremental =
       | Constraint(n, test, _) ->
         loop n
           |> Seq.filter (evalTest test)
+      | Memory(_, tokensRef, _) -> !tokensRef :> _ seq
       | Prod _ -> failwith "prod"
     loop
 
-  let procAgenda allFacts token node =
+  let procAgenda activate allFacts token node =
     let agenda = ref []
     let rec proc parentOpt token node =
       let procChildren childrenOptRef token = Seq.iter (proc (Some node) token) << Option.get <| !childrenOptRef
@@ -112,6 +117,15 @@ module Incremental =
       | Constraint(_, test, childrenOptRef) ->
         if evalTest test token
         then procChildren childrenOptRef token
+      | Memory(_, tokensRef, childrenOptRef) ->
+        if activate
+        then
+          let hasToken = Set.contains token !tokensRef
+          tokensRef := Set.add token !tokensRef
+          if not hasToken
+          then procChildren childrenOptRef token
+        else
+          failwith "sd"
       | Prod(_, action) -> agenda := (token, action) :: !agenda
     proc None token node
     !agenda
@@ -162,10 +176,12 @@ module Incremental =
 
     and procFix (token:Token) node =
       let facts = Seq.map fst <| Map.toSeq authorMap
-      let agenda = procAgenda facts token node
+      let agenda = procAgenda true facts token node
       Seq.iter (fun(token, action) -> addFactAuthor (System(token, action)) <| ReteHelper.evalAction (lookup token) action) agenda
 
     let rec removeFactCascading fact =
+      let facts = Seq.map fst <| Map.toSeq authorMap
+      Seq.iter (fun node -> ignore <| procAgenda false facts (FactToken fact) node) <| findAlphas fact
       Map.iter (fun authorFact tokens ->
                     tokens
                       |> Set.iter (fun author ->
