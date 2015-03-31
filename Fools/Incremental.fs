@@ -39,20 +39,6 @@ module Incremental =
     | Constraint (_, _, r) -> r
     | _ -> failwith "no children"
 
-  let updateChildren updater =
-    let rec loop node =
-      match node with
-      | Dummy r -> r := updater node
-      | Alpha(_, r) -> r := updater node
-      | Join(nl, nr, r) ->
-        loop nl
-        loop nr
-        r := updater node
-      | Constraint (n, _, _)  | Prod (n, _) -> loop n
-    loop
-
-  let clearChildren = updateChildren (fun _ -> None)
-
   let setChildren childMap =
     Map.iter (fun parent children -> (getChildrenRef parent) := Some <| Set.toArray children) childMap
 
