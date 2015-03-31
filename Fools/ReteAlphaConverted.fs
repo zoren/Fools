@@ -46,12 +46,11 @@ module ReteAlphaConverted =
     | ReteHelper.Join(l, r) ->
       let nl, ml = alphaConvert l
       let nr, mr = alphaConvert r
-      let m' =
-        Seq.append
-          (Map.toSeq ml |> Seq.map (fun (v, i) -> v, Left i))
-          (Map.toSeq mr |> Seq.map (fun (v, i) -> v, Right i)) |> Map.ofSeq
-      let eqList = Map.toArray ml |> Seq.choose (fun(vl, il) -> Option.map (fun ir -> il, ir) <| Map.tryFind vl mr) |> Set.ofSeq
-      NodeAC.Join(nl, nr), m'
+      let ml' = Map.map (fun _ v -> Left v) ml
+      let mr' = Map.map (fun _ v -> Right v) mr
+      let m', eqSet = Seq.fold merge (mr', Set.empty) <| Map.toSeq ml'
+      let joinNode = NodeAC.Join(nl, nr)
+      Seq.fold (fun n (l, r) -> NodeAC.Constraint(n, (l, r))) joinNode <| Set.toSeq eqSet, m'
 
   type Token =
     | UnitToken
