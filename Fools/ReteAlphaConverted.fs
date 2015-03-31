@@ -58,6 +58,12 @@ module ReteAlphaConverted =
     | FactToken of Fact
     | JoinToken of Token * Token
 
+  let rec getFactsInToken =
+    function
+    | UnitToken -> Seq.empty
+    | FactToken fact -> Seq.singleton fact
+    | JoinToken(l, r) -> Seq.append (getFactsInToken l) (getFactsInToken r)
+
   let matchPatternParam c =
     function
     | ReteAnything -> true

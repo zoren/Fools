@@ -141,6 +141,15 @@ module Incremental =
     function
     | Insert(factName, exps) -> Insert(factName, List.map (mapExpVar f) exps)
 
+  type Author =
+    | User
+    | System of Token * Action<TokenSelector>
+
+  let getFactsInAuthor =
+    function
+    | User -> Seq.empty
+    | System(token, _) -> getFactsInToken token
+
   type IncrementalInterpreter (file:AST.File) =
     let graph = ReteHelper.fileToGraph file
     let nodes = List.map (fun(ReteHelper.Production(node, action)) -> let nodeAC, mapping = alphaConvert node
@@ -149,6 +158,7 @@ module Incremental =
     let childMap = OneToManyMap.ofSeq <| Seq.collect getChildren nodes
     let alphaMappings = Seq.collect getAlphaMap nodes |> build
     let alphaMap = OneToManyMap.ofSeq alphaMappings
+    let dummies = Seq.collect getDummies nodes |> Seq.toArray
 
     let findAlphas ((factName, constants):Fact) =
       let alphaMems = OneToManyMap.findSet factName alphaMap
@@ -156,36 +166,73 @@ module Incremental =
         |> Seq.filter (fun(fp, node) -> ReteAlphaConverted.matchConstants constants fp)
         |> Seq.map snd
 
-    let rec processConflict factSet (token, action) =
-      let fact = ReteHelper.evalAction (lookup token) action
-      procFix factSet fact
+    let mutable authorMap = Map.empty
 
-    and procFix factSet fact =
-      if Set.contains fact factSet
-      then factSet
-      else
-        let alphaNodes = findAlphas fact
-        let procNode factSet node =
-          let agenda = procAgenda factSet (FactToken fact) node
-          Seq.fold processConflict factSet agenda
-        Seq.fold procNode (Set.add fact factSet) alphaNodes
+    let rec addFactAuthor author fact =
+      let authorSet = OneToManyMap.findSet fact authorMap
+      authorMap <- OneToManyMap.add fact author authorMap
+      if Set.isEmpty authorSet
+      then Seq.iter (procFix (FactToken fact)) <| findAlphas fact
 
-    let mutable userFacts = Set.empty
-    let mutable systemFacts = Set.empty
-    interface IInterpreter with
-      member __.HasFact fact = Set.contains fact userFacts || Set.contains fact systemFacts
+    and procFix (token:Token) node =
+      let facts = Seq.map fst <| Map.toSeq authorMap
+      let agenda = procAgenda facts token node
+      Seq.iter (fun(token, action) -> addFactAuthor (System(token, action)) <| ReteHelper.evalAction (lookup token) action) agenda
 
-      member __.Insert fact =
-        let facts = Set.union userFacts systemFacts
-        setChildren childMap
-        systemFacts <- procFix facts fact
-        Seq.iter clearChildren nodes
-        userFacts <- Set.add fact userFacts
+    let rec removeFactCascading fact =
+      Map.iter (fun authorFact tokens ->
+                    tokens
+                      |> Set.iter (fun author ->
+                                        if Seq.exists ((=)fact) <| getFactsInAuthor author
+                                        then removeFactAuthor author authorFact)) authorMap
 
-      member __.Retract fact =
-        //userFacts <- Set.remove fact userFacts
-        failwith "not implemented"
+    and removeFactAuthor author fact =
+      authorMap <- OneToManyMap.remove fact author authorMap
+      if Set.isEmpty <| OneToManyMap.findSet fact authorMap
+      then removeFactCascading fact
+
+    let hasAuthor fact author =
+      Set.contains author <| OneToManyMap.findSet fact authorMap
+
+    do
+      setChildren childMap
+      Seq.iter (procFix UnitToken) dummies
+
+    let mutable insertedUserFacts = Set.empty
+    let mutable retractedUserFacts = Set.empty
+
+    member __.FireAllRules () =
+      let factsToRetract = retractedUserFacts
+      retractedUserFacts <- Set.empty
+      let factsToInsert = insertedUserFacts
+      insertedUserFacts <- Set.empty
+      Seq.iter (removeFactAuthor User) factsToRetract
+      Seq.iter (addFactAuthor User) factsToInsert
+
+    member __.HasFact fact =
+      not << Set.isEmpty <| OneToManyMap.findSet fact authorMap
+
+    member __.Insert fact =
+      retractedUserFacts <- Set.remove fact retractedUserFacts
+      if not <| hasAuthor fact User
+      then insertedUserFacts <- Set.add fact insertedUserFacts
+
+    member __.Retract fact =
+      insertedUserFacts <- Set.remove fact insertedUserFacts
+      if hasAuthor fact User
+      then retractedUserFacts <- Set.add fact retractedUserFacts
 
   type public IncrementalProvider() =
     interface IInterpreterProvider with
-      member __.GetInterpreter file = IncrementalInterpreter file :> IInterpreter
+      member __.GetInterpreter file =
+        let interpreter = IncrementalInterpreter file
+        interpreter.FireAllRules()
+        { new IInterpreter with
+            member __.HasFact fact =
+              interpreter.FireAllRules()
+              interpreter.HasFact fact
+
+            member __.Insert fact = interpreter.Insert fact
+
+            member __.Retract fact = interpreter.Retract fact
+        }
