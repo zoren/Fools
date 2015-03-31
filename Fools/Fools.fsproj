@@ -49,6 +49,7 @@
     <Compile Include="ReteHelper.fs" />
     <Compile Include="ReteAlphaConverted.fs" />
     <Compile Include="ReteInterpreter.fs" />
+    <Compile Include="Incremental.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

@@ -6,6 +6,7 @@ open Swensen.Unquote.Assertions
 
 [<TestFixture(typeof<InterpreterProvider>)>]
 [<TestFixture(typeof<ReteInterpreterACProvider>)>]
+[<TestFixture(typeof<Incremental.IncrementalProvider>)>]
 type Tests<'IProvider when 'IProvider :> IInterpreterProvider
                       and 'IProvider : (new : unit -> 'IProvider)>() =
   let provider = new 'IProvider()
@@ -23,7 +24,7 @@ type Tests<'IProvider when 'IProvider :> IInterpreterProvider
   member __.``a empty session has no facts``() =
     let i = getEmptyInterpreter()
     test <@ not <| i.HasFact aFact @>
-    
+
   [<Test>]
   member __.``a fact can be added``() =
     let i = getEmptyInterpreter()

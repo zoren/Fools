@@ -10,14 +10,17 @@ module PatternMatchHelper =
     | PatConst pc -> if c = pc then Some Map.empty else None
     | PatVar v -> Some <| Map.ofList [v, c]
 
-  let unify (l:Map<Variable,Constant>) (r:Map<Variable,Constant>) =
+  let unify l r =
     let rec loop =
       function
       | [] -> Some r
-      | (v, c) :: ll ->
-        match Map.tryFind v r with
-        | Some vr when v <> vr -> None
-        | _ -> Option.map (fun m -> Map.add v c m) (loop ll)
+      | (vl, cl) :: ll ->
+        match Map.tryFind vl r with
+        | Some cr ->
+          if cl = cr
+          then loop ll
+          else None
+        | None -> Option.map (Map.add vl cl) (loop ll)
     loop <| Map.toList l
 
   let rec matchPatterns factPattern args =
@@ -48,7 +51,7 @@ module PatternMatchHelper =
   let evalExp env =
     function
     | Const c -> c
-    | Var v -> Map.find v env
+    | Var v -> env v
 
 type NaiveInterpreter(file:AST.File) =
   let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
@@ -71,7 +74,7 @@ type NaiveInterpreter(file:AST.File) =
 
   let rec evalRules() =
     let evalRule ((assumptions, action):Rule) =
-      Seq.iter (fun env -> if evalAction env action then evalRules())
+      Seq.iter (fun env -> if evalAction (fun var -> Map.find var env) action then evalRules())
         <| PatternMatchHelper.findAllMatches (Map.toSeq factAuthors |> Seq.map fst) assumptions
     Seq.iter evalRule file
 

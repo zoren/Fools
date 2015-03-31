@@ -7,7 +7,7 @@ module ReteHelper =
     | Dummy
     | Alpha of FactPattern
     | Join of Node * Node
-  type Production = Production of Node * Action
+  type Production = Production of Node * Action<Variable>
   type Graph = Production list
   let patternsToNode =
     function
@@ -34,7 +34,7 @@ module ReteHelper =
 
   let evalProduction factSet (Production(node, action)) =
     evalNode factSet node
-      |> Seq.map (fun env -> evalAction env action)
+      |> Seq.map (fun env -> evalAction (fun var -> Map.find var env) action)
       |> Seq.fold (fun a fact -> Set.add fact a) factSet
 
   let evalRulesToFix productions factSet =

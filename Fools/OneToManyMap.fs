@@ -20,3 +20,5 @@ module OneToManyMap =
     if Set.isEmpty set'
     then Map.remove k m
     else Map.add k set' m
+
+  let ofSeq s = Seq.fold (fun accMap (n, p) -> add n p accMap) Map.empty s

@@ -9,59 +9,72 @@ module ReteAlphaConverted =
     | Left of TokenSelector
     | Right of TokenSelector
     | FactIndex of int
+  type ConstraintTest = TokenSelector * TokenSelector
   type NodeAC =
     | Dummy
-    | Alpha of ReteFactPattern * Set<int * int>
-    | Join of NodeAC * NodeAC * Set<TokenSelector * TokenSelector>
+    | Alpha of ReteFactPattern
+    | Join of NodeAC * NodeAC
+    | Constraint of NodeAC * ConstraintTest
 
   let patParamToRete =
     function
     | PatVar _ -> ReteAnything
     | PatConst c -> RetePatConst c
 
+  let merge (m, eqSet) (var, sel) =
+    Map.add var sel m,
+      match Map.tryFind var m with
+      | None -> eqSet
+      | Some sel' -> Set.add (if sel < sel' then sel, sel' else sel', sel) eqSet
+
   let factPatternToAlpha (patternParams:PatternParameter list) =
     let toMap i =
       function
-      | PatVar v -> Some(v, i)
+      | PatVar v -> Some(v, FactIndex i)
       | PatConst _ -> None
     Seq.mapi toMap patternParams
       |> Seq.choose id
-      |> Seq.fold (fun (eqlist, accMap) (v, i) -> let eqlist' =
-                                                    match Map.tryFind v accMap with
-                                                    | Some i' -> Set.add (i, i')  eqlist
-                                                    | None -> eqlist
-                                                  eqlist', Map.add v i accMap) (Set.empty, Map.empty)
+      |> Seq.fold merge (Map.empty, Set.empty)
 
   let rec alphaConvert =
     function
     | ReteHelper.Dummy -> NodeAC.Dummy, Map.empty
     | ReteHelper.Alpha(factName, patternParams) ->
-      let eqlist, map = factPatternToAlpha patternParams
-      NodeAC.Alpha((factName, List.map patParamToRete patternParams), eqlist), Map.map (fun _ i -> FactIndex i) map
+      let map, eqSet = factPatternToAlpha patternParams
+      let alphaNode = NodeAC.Alpha(factName, List.map patParamToRete patternParams)
+      Seq.fold (fun n (l, r) -> NodeAC.Constraint(n, (l, r))) alphaNode <| Set.toSeq eqSet, map
     | ReteHelper.Join(l, r) ->
       let nl, ml = alphaConvert l
       let nr, mr = alphaConvert r
-      let m' =
-        Seq.append
-          (Map.toSeq ml |> Seq.map (fun (v, i) -> v, Left i))
-          (Map.toSeq mr |> Seq.map (fun (v, i) -> v, Right i)) |> Map.ofSeq
-      let eqList = Map.toArray ml |> Seq.choose (fun(vl, il) -> Option.map (fun ir -> il, ir) <| Map.tryFind vl mr) |> Set.ofSeq
-      NodeAC.Join(nl, nr, Set.empty), m'
+      let ml' = Map.map (fun _ v -> Left v) ml
+      let mr' = Map.map (fun _ v -> Right v) mr
+      let m', eqSet = Seq.fold merge (mr', Set.empty) <| Map.toSeq ml'
+      let joinNode = NodeAC.Join(nl, nr)
+      Seq.fold (fun n (l, r) -> NodeAC.Constraint(n, (l, r))) joinNode <| Set.toSeq eqSet, m'
 
   type Token =
     | UnitToken
     | FactToken of Fact
     | JoinToken of Token * Token
 
+  let rec getFactsInToken =
+    function
+    | UnitToken -> Seq.empty
+    | FactToken fact -> Seq.singleton fact
+    | JoinToken(l, r) -> Seq.append (getFactsInToken l) (getFactsInToken r)
+
   let matchPatternParam c =
     function
     | ReteAnything -> true
     | RetePatConst c' -> c = c'
 
-  let matchPattern (factName, reteFactPattern) ((factName', consts)) =
+  let matchConstants consts reteFactPattern =
     if List.length reteFactPattern <> List.length consts
     then failwith "arity mismatch"
-    factName = factName' && List.forall2 matchPatternParam consts reteFactPattern
+    List.forall2 matchPatternParam consts reteFactPattern
+
+  let matchPattern (factName, reteFactPattern) ((factName', consts)) =
+    factName = factName' && matchConstants consts reteFactPattern
 
   let rec lookup token selector =
     match token, selector with
@@ -74,22 +87,22 @@ module ReteAlphaConverted =
     let rec loop =
       function
       | NodeAC.Dummy -> Seq.singleton UnitToken
-      | NodeAC.Alpha(reteFactPattern, indexEqs) ->
+      | NodeAC.Alpha reteFactPattern ->
         factSet
           |> Seq.filter (matchPattern reteFactPattern)
-          |> Seq.filter (fun (_, fact) -> Seq.forall (fun(i, i') -> List.nth fact i = List.nth fact i') indexEqs)
           |> Seq.map FactToken
-      | NodeAC.Join(nl, nr, tokenEqs) ->
+      | NodeAC.Join(nl, nr) ->
         seq {for l in loop nl do
               for r in loop nr do
                 yield JoinToken(l, r)}
-          |> Seq.filter (fun t -> Seq.forall (fun (tokenEql, tokenEqr) -> lookup t tokenEql = lookup t tokenEqr) tokenEqs)
+      | NodeAC.Constraint(n, (sell, selr)) ->
+        loop n
+          |> Seq.filter (fun t -> lookup t sell = lookup t selr)
     loop
 
   let evalProduction factSet ((nodeAC : NodeAC, mapping:Map<Variable, TokenSelector>), action) =
     evalNode factSet nodeAC
-      |> Seq.map (fun t -> Map.map (fun var selector -> lookup t selector) mapping)
-      |> Seq.map (fun env -> ReteHelper.evalAction env action)
+      |> Seq.map (fun t -> ReteHelper.evalAction (lookup t) action)
       |> Seq.fold (fun a fact -> Set.add fact a) factSet
 
   let evalRulesToFix productions factSet =
