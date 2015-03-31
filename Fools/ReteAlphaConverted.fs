@@ -78,8 +78,6 @@ module ReteAlphaConverted =
     | JoinToken(_, r), Right sel -> lookup r sel
     | _ -> failwith "not found"
 
-  let tokenToEnv (token:Token) (mapping:Map<Variable, TokenSelector>) = Map.map (fun var tokSel -> lookup token tokSel) mapping
-
   let evalNode factSet =
     let rec loop =
       function
@@ -99,8 +97,7 @@ module ReteAlphaConverted =
 
   let evalProduction factSet ((nodeAC : NodeAC, mapping:Map<Variable, TokenSelector>), action) =
     evalNode factSet nodeAC
-      |> Seq.map (fun t -> Map.map (fun var selector -> lookup t selector) mapping)
-      |> Seq.map (fun env -> ReteHelper.evalAction env action)
+      |> Seq.map (fun t -> ReteHelper.evalAction (lookup t) action)
       |> Seq.fold (fun a fact -> Set.add fact a) factSet
 
   let evalRulesToFix productions factSet =

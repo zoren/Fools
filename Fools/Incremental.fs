@@ -9,7 +9,7 @@ module Incremental =
     | Alpha of ReteFactPattern * NodeI[] option ref
     | Join of NodeI * NodeI * NodeI[] option ref
     | Constraint of NodeI * ConstraintTest * NodeI[] option ref
-    | Prod of NodeI * Map<Variable, TokenSelector> * Action
+    | Prod of NodeI * Action<TokenSelector>
 
   let rec convertFromAC =
     function
@@ -27,7 +27,7 @@ module Incremental =
         Seq.concat [Seq.ofList[nl, j; nr, j]
                     loop nl
                     loop nr]
-      | (Constraint(n, _, _) | Prod(n, _, _)) as p ->
+      | (Constraint(n, _, _) | Prod(n, _)) as p ->
         Seq.append (Seq.singleton (n, p)) <| loop n
     loop
 
@@ -48,7 +48,7 @@ module Incremental =
         loop nl
         loop nr
         r := updater node
-      | Constraint (n, _, _)  | Prod (n, _, _) -> loop n
+      | Constraint (n, _, _)  | Prod (n, _) -> loop n
     loop
 
   let clearChildren = updateChildren (fun _ -> None)
@@ -61,7 +61,7 @@ module Incremental =
       function
       | (Dummy _ | Alpha _) as n -> chooser n
       | Join(nl, nr, _) -> Seq.append (loop nl) (loop nr)
-      | Constraint (n, _, _)  | Prod (n, _, _) -> loop n
+      | Constraint (n, _, _)  | Prod (n, _) -> loop n
     loop
 
   let rec getAlphaMap =
@@ -126,18 +126,29 @@ module Incremental =
       | Constraint(_, test, childrenOptRef) ->
         if evalTest test token
         then procChildren childrenOptRef token
-      | Prod(_, mapping,  action) -> agenda := (token, mapping, action) :: !agenda
+      | Prod(_, action) -> agenda := (token, action) :: !agenda
     proc None token node
     !agenda
 
-  type IncrementalInterpreter (file:AST.File) = //nodes : NodeI seq) =
+  let mapExpVar f =
+    let rec loop =
+      function
+      | Const c -> Const c
+      | Var v -> Var <| f v
+    loop
+
+  let mapAction f =
+    function
+    | Insert(factName, exps) -> Insert(factName, List.map (mapExpVar f) exps)
+
+  type IncrementalInterpreter (file:AST.File) =
     let graph = ReteHelper.fileToGraph file
     let nodes = List.map (fun(ReteHelper.Production(node, action)) -> let nodeAC, mapping = alphaConvert node
-                                                                      Prod(convertFromAC nodeAC, mapping, action)) graph
+                                                                      let mappedAction = mapAction (fun var -> Map.find var mapping) action
+                                                                      Prod(convertFromAC nodeAC, mappedAction)) graph
     let childMap = OneToManyMap.ofSeq <| Seq.collect getChildren nodes
     let alphaMappings = Seq.collect getAlphaMap nodes |> build
     let alphaMap = OneToManyMap.ofSeq alphaMappings
-//    let dummies = Seq.collect getDummies nodes |> Seq.toArray
 
     let findAlphas ((factName, constants):Fact) =
       let alphaMems = OneToManyMap.findSet factName alphaMap
@@ -145,8 +156,8 @@ module Incremental =
         |> Seq.filter (fun(fp, node) -> ReteAlphaConverted.matchConstants constants fp)
         |> Seq.map snd
 
-    let rec processConflict factSet (token, mapping, action) =
-      let fact = ReteHelper.evalAction (tokenToEnv token mapping) action
+    let rec processConflict factSet (token, action) =
+      let fact = ReteHelper.evalAction (lookup token) action
       procFix factSet fact
 
     and procFix factSet fact =

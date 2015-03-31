@@ -51,7 +51,7 @@ module PatternMatchHelper =
   let evalExp env =
     function
     | Const c -> c
-    | Var v -> Map.find v env
+    | Var v -> env v
 
 type NaiveInterpreter(file:AST.File) =
   let mutable factAuthors = Map.empty : Map<Fact, Set<Author>>
@@ -74,7 +74,7 @@ type NaiveInterpreter(file:AST.File) =
 
   let rec evalRules() =
     let evalRule ((assumptions, action):Rule) =
-      Seq.iter (fun env -> if evalAction env action then evalRules())
+      Seq.iter (fun env -> if evalAction (fun var -> Map.find var env) action then evalRules())
         <| PatternMatchHelper.findAllMatches (Map.toSeq factAuthors |> Seq.map fst) assumptions
     Seq.iter evalRule file
 

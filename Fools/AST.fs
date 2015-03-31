@@ -6,8 +6,8 @@ module AST =
   type Variable = string
   type PatternParameter = PatVar of Variable | PatConst of Constant
   type FactPattern = FactName * PatternParameter list
-  type Exp = Var of Variable | Const of Constant
-  type Action =
-    | Insert of FactName * Exp list
-  type Rule = FactPattern list * Action
+  type Exp<'TVar> = Var of 'TVar | Const of Constant
+  type Action<'TVar> =
+    | Insert of FactName * Exp<'TVar> list
+  type Rule = FactPattern list * Action<Variable>
   type File = Rule list
