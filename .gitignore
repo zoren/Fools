@@ -1,4 +1,5 @@
-Fools/packages/
+packages/
+
 **.DotSettings.user
 *.suo
 **/bin/
