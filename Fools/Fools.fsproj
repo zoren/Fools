@@ -42,14 +42,6 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AST.fs" />
-    <Compile Include="OneToManyMap.fs" />
-    <Compile Include="IInterpreter.fs" />
-    <Compile Include="Interpreter.fs" />
-    <Compile Include="ReteHelper.fs" />
-    <Compile Include="ReteAlphaConverted.fs" />
-    <Compile Include="ReteInterpreter.fs" />
-    <Compile Include="Incremental.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
