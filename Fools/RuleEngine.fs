@@ -18,15 +18,3 @@ type IRuleEngine =
   abstract member AddFact : Fact -> unit
   abstract member RemoveFact : Fact -> unit
   abstract member Fire : unit -> unit
-
-open System.Collections.Generic
-
-type RuleEngine() =
-  interface IRuleEngine with
-    member __.AddRule(rule) = ()
-
-    member __.AddFact fact = ()
-
-    member __.RemoveFact fact = ()
-
-    member __.Fire () = ()
