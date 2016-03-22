@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fools", "Fools.fsproj", "{2A15C33C-1690-435B-9309-13812BF1606D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fools", "Fools\Fools.fsproj", "{2A15C33C-1690-435B-9309-13812BF1606D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FoolsTests", "..\FoolsTests\FoolsTests.fsproj", "{AFAC2710-8C0F-4F9D-80AB-3EC3DD89E5AC}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FoolsTests", "FoolsTests\FoolsTests.fsproj", "{AFAC2710-8C0F-4F9D-80AB-3EC3DD89E5AC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
