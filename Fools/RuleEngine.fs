@@ -18,3 +18,9 @@ type IRuleEngine =
   abstract member AddFact : Fact -> unit
   abstract member RemoveFact : Fact -> unit
   abstract member Fire : unit -> unit
+
+[<AutoOpen>]
+module RuleEngineHelpers =
+  let getFact<'a> =
+    function
+    | Fact f -> f :?> 'a
